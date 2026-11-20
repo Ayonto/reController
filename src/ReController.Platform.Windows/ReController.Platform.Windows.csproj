@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Windows integration: XInput / SDL3 input, ViGEm virtual pads, SendInput, HidHide, OS services. -->
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <RootNamespace>ReController.Platform.Windows</RootNamespace>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Nefarius.ViGEm.Client" />
+    <!-- Only the native SDL3 binaries are consumed; we ship our own minimal, audited P/Invoke surface. -->
+    <PackageReference Include="ppy.SDL3-CS" IncludeAssets="native" PrivateAssets="none" />
+    <PackageReference Include="Serilog" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\ReController.Core\ReController.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="ReController.Platform.Tests" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,12 @@
+# Build output
+bin/
+obj/
+artifacts/
+TestResults/
+*.user
+*.suo
+.vs/
+.idea/
+*.DotSettings.user
+coverage*.xml
+installer/Output/

@@ -1,0 +1,112 @@
+<UserControl x:Class="ReController.App.Views.GamePage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:m="clr-namespace:ReController.Core.Mapping;assembly=ReController.Core"
+             xmlns:inf="clr-namespace:ReController.App.Infrastructure">
+    <UserControl.Resources>
+        <inf:EqualsConverter x:Key="Eq" />
+    </UserControl.Resources>
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="24,8,10,8">
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Game -->
+            <Border Style="{StaticResource Card}" Margin="0,0,14,14" VerticalAlignment="Top">
+                <StackPanel>
+                    <DockPanel>
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                            <Button Style="{StaticResource IconButton}" Content="&#xE70F;" ToolTip="Rename game" Command="{Binding RenameGameCommand}" />
+                            <Button Style="{StaticResource IconButton}" Content="&#xE8C8;" ToolTip="Duplicate game" Command="{Binding DuplicateGameCommand}" />
+                            <Button Style="{StaticResource IconButton}" Content="&#xE74D;" ToolTip="Delete game" Command="{Binding DeleteGameCommand}" Foreground="{StaticResource DangerBrush}" />
+                        </StackPanel>
+                        <TextBlock Text="Game" Style="{StaticResource Caption}" VerticalAlignment="Center" />
+                    </DockPanel>
+                    <TextBlock Text="{Binding SelectedGame.Name}" Style="{StaticResource H1}" Margin="0,2,0,14" TextTrimming="CharacterEllipsis" />
+
+                    <TextBlock Text="Automatic switching" Style="{StaticResource Caption}" Margin="0,0,0,4" />
+                    <TextBlock Style="{StaticResource Muted}" FontSize="12.5" Margin="0,0,0,10"
+                               Text="When one of these programs comes to the foreground, this game's first config is applied to every connected controller." />
+                    <ItemsControl ItemsSource="{Binding GameExecutables}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Background="{StaticResource Bg2Brush}" CornerRadius="6" Padding="10,4,4,4" Margin="0,0,0,6">
+                                    <DockPanel>
+                                        <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Width="28" Height="28" FontSize="11" Content="&#xE711;" ToolTip="Remove"
+                                                Command="{Binding DataContext.RemoveExecutableCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" />
+                                        <TextBlock Text="&#xE756;" Style="{StaticResource Icon}" FontSize="13" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,10,0" />
+                                        <TextBlock Text="{Binding}" VerticalAlignment="Center" FontFamily="{StaticResource MonoFont}" FontSize="12.5" />
+                                    </DockPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <DockPanel Margin="0,4,0,0">
+                        <Button DockPanel.Dock="Right" Content="Browse…" Margin="6,0,0,0" Command="{Binding AddExecutableFromFileCommand}" />
+                        <Button DockPanel.Dock="Right" Content="Add" Margin="6,0,0,0" Command="{Binding AddExecutableByNameCommand}" />
+                        <TextBox Text="{Binding NewExecutable, UpdateSourceTrigger=PropertyChanged}" ToolTip="Executable file name, e.g. EliteDangerous64.exe">
+                            <TextBox.InputBindings>
+                                <KeyBinding Key="Enter" Command="{Binding AddExecutableByNameCommand}" />
+                            </TextBox.InputBindings>
+                        </TextBox>
+                    </DockPanel>
+                    <CheckBox Style="{StaticResource Switch}" Margin="0,14,0,0" Content="Automatic switching enabled (all games)" IsChecked="{Binding Settings.AutoProfileSwitching}" />
+
+                    <Separator Margin="0,14" />
+                    <TextBlock Text="Share" Style="{StaticResource Caption}" Margin="0,0,0,8" />
+                    <WrapPanel>
+                        <Button Margin="0,0,8,0" Command="{Binding ExportGameCommand}">
+                            <StackPanel Orientation="Horizontal"><TextBlock Text="&#xEDE1;" Style="{StaticResource Icon}" Margin="0,0,8,0" /><TextBlock Text="Export profile" /></StackPanel>
+                        </Button>
+                        <Button Command="{Binding ImportGameCommand}">
+                            <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE8B5;" Style="{StaticResource Icon}" Margin="0,0,8,0" /><TextBlock Text="Import profile" /></StackPanel>
+                        </Button>
+                    </WrapPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- Config -->
+            <Border Grid.Column="1" Style="{StaticResource Card}" Margin="0,0,14,14" VerticalAlignment="Top">
+                <StackPanel>
+                    <DockPanel>
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                            <Button Style="{StaticResource IconButton}" Content="&#xE70F;" ToolTip="Rename config" Command="{Binding RenameConfigCommand}" />
+                            <Button Style="{StaticResource IconButton}" Content="&#xE8C8;" ToolTip="Duplicate config" Command="{Binding DuplicateConfigCommand}" />
+                            <Button Style="{StaticResource IconButton}" Content="&#xE74D;" ToolTip="Delete config" Command="{Binding DeleteConfigCommand}" Foreground="{StaticResource DangerBrush}" />
+                        </StackPanel>
+                        <TextBlock Text="Config" Style="{StaticResource Caption}" VerticalAlignment="Center" />
+                    </DockPanel>
+                    <TextBlock Text="{Binding SelectedConfig.Name}" Style="{StaticResource H1}" Margin="0,2,0,14" TextTrimming="CharacterEllipsis" />
+
+                    <TextBlock Text="Output" Style="{StaticResource Caption}" Margin="0,0,0,8" />
+                    <RadioButton Style="{StaticResource ChipRadio}" GroupName="out" HorizontalContentAlignment="Left" HorizontalAlignment="Stretch" Padding="12,10"
+                                 IsChecked="{Binding OutputMode, Converter={StaticResource Eq}, ConverterParameter={x:Static m:VirtualOutput.Xbox360}}">
+                        <StackPanel>
+                            <TextBlock Text="Virtual Xbox 360 controller" FontWeight="SemiBold" />
+                            <TextBlock Text="Games see a remapped controller. Requires ViGEmBus; HidHide recommended." FontSize="12" Opacity="0.75" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </RadioButton>
+                    <RadioButton Style="{StaticResource ChipRadio}" GroupName="out" HorizontalContentAlignment="Left" HorizontalAlignment="Stretch" Padding="12,10"
+                                 IsChecked="{Binding OutputMode, Converter={StaticResource Eq}, ConverterParameter={x:Static m:VirtualOutput.None}}">
+                        <StackPanel>
+                            <TextBlock Text="Keyboard &amp; mouse only" FontWeight="SemiBold" />
+                            <TextBlock Text="No virtual controller. Unmapped buttons do nothing — ideal for desktop use." FontSize="12" Opacity="0.75" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </RadioButton>
+
+                    <TextBlock Text="Options" Style="{StaticResource Caption}" Margin="0,12,0,4" />
+                    <CheckBox Style="{StaticResource Switch}" Content="Swap left and right sticks" IsChecked="{Binding SwapSticks}" />
+                    <CheckBox Style="{StaticResource Switch}" Content="Forward rumble to the controller" IsChecked="{Binding ForwardRumble}" />
+
+                    <Separator Margin="0,14" />
+                    <TextBlock Text="Danger zone" Style="{StaticResource Caption}" Margin="0,0,0,8" />
+                    <Button Style="{StaticResource DangerButton}" HorizontalAlignment="Left" Command="{Binding ResetLayerCommand}">
+                        <TextBlock Text="Clear all mappings on the current layer" />
+                    </Button>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </ScrollViewer>
+</UserControl>

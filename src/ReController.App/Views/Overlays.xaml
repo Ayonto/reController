@@ -1,0 +1,247 @@
+<UserControl x:Class="ReController.App.Views.Overlays"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:ReController.App.ViewModels"
+             xmlns:inf="clr-namespace:ReController.App.Infrastructure">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolVis" />
+        <inf:BoolToVisibilityConverter x:Key="NotBoolVis" Invert="True" />
+        <inf:NullToVisibilityConverter x:Key="NullVis" />
+
+        <Style x:Key="Panel" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource Bg1Brush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource Line2Brush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="24" />
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect BlurRadius="40" ShadowDepth="0" Opacity="0.6" Color="Black" />
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="Section" TargetType="TextBlock" BasedOn="{StaticResource Caption}">
+            <Setter Property="Margin" Value="0,18,0,8" />
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <!-- dim backdrop -->
+        <Border Background="#B3050608" MouseLeftButtonDown="OnBackdrop" />
+
+        <!-- ============================== SETTINGS ============================== -->
+        <Border Style="{StaticResource Panel}" Width="580" Visibility="{Binding IsSettingsOpen, Converter={StaticResource BoolVis}}">
+            <Grid MaxHeight="680">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <DockPanel Margin="24,18,14,0">
+                    <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="&#xE711;" FontSize="12" Command="{Binding CloseOverlaysCommand}" ToolTip="Close" />
+                    <TextBlock Text="Settings" Style="{StaticResource H1}" />
+                </DockPanel>
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="24,0,20,22" DataContext="{Binding Settings}">
+                    <StackPanel>
+                        <TextBlock Text="Appearance" Style="{StaticResource Section}" />
+                        <TextBlock Text="Accent colour" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,8" />
+                        <ItemsControl ItemsSource="{Binding Accents}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type inf:AccentPreset}">
+                                    <RadioButton GroupName="accent" Cursor="Hand" Margin="0,0,10,0" ToolTip="{Binding Name}" Tag="{Binding Name}" Checked="OnAccentChecked" Loaded="OnAccentLoaded">
+                                        <RadioButton.Template>
+                                            <ControlTemplate TargetType="RadioButton">
+                                                <Grid Width="34" Height="34">
+                                                    <Ellipse x:Name="Ring" Stroke="Transparent" StrokeThickness="2" />
+                                                    <Ellipse Margin="5">
+                                                        <Ellipse.Fill>
+                                                            <SolidColorBrush Color="{Binding Color}" />
+                                                        </Ellipse.Fill>
+                                                    </Ellipse>
+                                                </Grid>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsChecked" Value="True">
+                                                        <Setter TargetName="Ring" Property="Stroke" Value="{StaticResource TextBrush}" />
+                                                    </Trigger>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="Ring" Property="Stroke" Value="{StaticResource TextMutedBrush}" />
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </RadioButton.Template>
+                                    </RadioButton>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <TextBlock Text="Startup" Style="{StaticResource Section}" />
+                        <CheckBox Style="{StaticResource Switch}" Content="Start with Windows" IsChecked="{Binding StartWithWindows}" />
+                        <CheckBox Style="{StaticResource Switch}" Content="Start minimised to the notification area" IsChecked="{Binding StartMinimized}" />
+                        <CheckBox Style="{StaticResource Switch}" Content="Closing the window keeps reController running in the tray" IsChecked="{Binding CloseToTray}" />
+
+                        <TextBlock Text="Engine" Style="{StaticResource Section}" />
+                        <DockPanel Margin="0,4">
+                            <ComboBox DockPanel.Dock="Right" Width="140" ItemsSource="{Binding PollingRates}" SelectedItem="{Binding PollingRate}" ItemStringFormat="{}{0} Hz" />
+                            <StackPanel>
+                                <TextBlock Text="Polling rate" />
+                                <TextBlock Text="How often controllers are read. 1000 Hz gives the lowest latency." Style="{StaticResource Muted}" FontSize="12" />
+                            </StackPanel>
+                        </DockPanel>
+                        <DockPanel Margin="0,10,0,4">
+                            <ComboBox DockPanel.Dock="Right" Width="180" ItemsSource="{Binding SlotModifiers}" SelectedItem="{Binding SlotModifier}" DisplayMemberPath="Name" />
+                            <StackPanel>
+                                <TextBlock Text="Slot switch button" />
+                                <TextBlock Text="Hold it and press D-Pad ↑ → ↓ ← to switch to slot 1–4 on the controller." Style="{StaticResource Muted}" FontSize="12" Margin="0,0,12,0" />
+                            </StackPanel>
+                        </DockPanel>
+                        <CheckBox Style="{StaticResource Switch}" Content="Switch configs automatically when a linked game is focused" IsChecked="{Binding AutoProfileSwitching}" Margin="0,8,0,0" />
+
+                        <TextBlock Text="Drivers" Style="{StaticResource Section}" />
+                        <Border Background="{StaticResource Bg2Brush}" CornerRadius="8" Padding="14,10" Margin="0,0,0,8">
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Content="Download" Command="{Binding OpenViGEmDownloadCommand}" VerticalAlignment="Center" />
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal">
+                                        <Ellipse Width="8" Height="8" VerticalAlignment="Center" Margin="0,0,8,0">
+                                            <Ellipse.Style>
+                                                <Style TargetType="Ellipse">
+                                                    <Setter Property="Fill" Value="{StaticResource DangerBrush}" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding ViGEmInstalled}" Value="True">
+                                                            <Setter Property="Fill" Value="{StaticResource SuccessBrush}" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Ellipse.Style>
+                                        </Ellipse>
+                                        <TextBlock Text="ViGEmBus" FontWeight="SemiBold" />
+                                        <TextBlock Text="{Binding ViGEmVersion}" Foreground="{StaticResource TextMutedBrush}" Margin="10,0,0,0" />
+                                    </StackPanel>
+                                    <TextBlock Text="Creates the virtual Xbox controller games see. Required for controller output." Style="{StaticResource Muted}" FontSize="12" Margin="16,2,12,0" />
+                                </StackPanel>
+                            </DockPanel>
+                        </Border>
+                        <Border Background="{StaticResource Bg2Brush}" CornerRadius="8" Padding="14,10">
+                            <StackPanel>
+                                <DockPanel>
+                                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Button Content="Manage…" Margin="0,0,6,0" Command="{Binding DataContext.OpenHidHideCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" Visibility="{Binding HidHideInstalled, Converter={StaticResource BoolVis}}" />
+                                        <Button Content="Download" Command="{Binding OpenHidHideDownloadCommand}" />
+                                    </StackPanel>
+                                    <StackPanel>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Ellipse Width="8" Height="8" VerticalAlignment="Center" Margin="0,0,8,0">
+                                                <Ellipse.Style>
+                                                    <Style TargetType="Ellipse">
+                                                        <Setter Property="Fill" Value="{StaticResource WarningBrush}" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding HidHideInstalled}" Value="True">
+                                                                <Setter Property="Fill" Value="{StaticResource SuccessBrush}" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Ellipse.Style>
+                                            </Ellipse>
+                                            <TextBlock Text="HidHide" FontWeight="SemiBold" />
+                                            <TextBlock Text="{Binding HidHideVersion}" Foreground="{StaticResource TextMutedBrush}" Margin="10,0,0,0" />
+                                        </StackPanel>
+                                        <TextBlock Text="Hides the physical controller from games so they don't receive input twice. Recommended." Style="{StaticResource Muted}" FontSize="12" Margin="16,2,12,0" />
+                                    </StackPanel>
+                                </DockPanel>
+                            </StackPanel>
+                        </Border>
+                        <Button Style="{StaticResource GhostButton}" HorizontalAlignment="Left" Margin="0,6,0,0" Content="Re-check drivers" Command="{Binding RefreshDriversCommand}" />
+
+                        <TextBlock Text="Data" Style="{StaticResource Section}" />
+                        <TextBlock Text="{Binding DataFolder}" FontFamily="{StaticResource MonoFont}" FontSize="12" Foreground="{StaticResource TextMutedBrush}" TextWrapping="Wrap" />
+                        <TextBlock Text="Portable mode (portable.txt found next to the app)." Foreground="{DynamicResource AccentBrush}" FontSize="12" Visibility="{Binding IsPortable, Converter={StaticResource BoolVis}}" />
+                        <WrapPanel Margin="0,8,0,0">
+                            <Button Content="Open data folder" Margin="0,0,8,0" Command="{Binding OpenDataFolderCommand}" />
+                            <Button Content="Open logs" Command="{Binding OpenLogsCommand}" />
+                        </WrapPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </Grid>
+        </Border>
+
+        <!-- ============================== ABOUT ============================== -->
+        <Border Style="{StaticResource Panel}" Width="440" Visibility="{Binding IsAboutOpen, Converter={StaticResource BoolVis}}">
+            <StackPanel Margin="28,22">
+                <DockPanel>
+                    <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="&#xE711;" FontSize="12" Command="{Binding CloseOverlaysCommand}" VerticalAlignment="Top" />
+                    <Image Source="/Assets/logo.png" Width="64" Height="64" HorizontalAlignment="Left" RenderOptions.BitmapScalingMode="HighQuality" />
+                </DockPanel>
+                <TextBlock Text="reController" Style="{StaticResource H1}" FontSize="24" Margin="0,14,0,0" />
+                <TextBlock Foreground="{StaticResource TextMutedBrush}">
+                    <Run Text="Version" /> <Run Text="{Binding AppVersion, Mode=OneWay}" />
+                </TextBlock>
+                <TextBlock Style="{StaticResource Muted}" Margin="0,14,0,0"
+                           Text="Free and open-source controller remapper for Windows. Remap buttons to other buttons, keys or mouse actions, fix broken buttons, add turbo, toggles and shift layers." />
+                <TextBlock Text="Built on" Style="{StaticResource Caption}" Margin="0,18,0,6" />
+                <TextBlock Style="{StaticResource Muted}" FontSize="12.5"
+                           Text="ViGEmBus &amp; HidHide by Nefarius Software Solutions · SDL3 · .NET 8 / WPF · CommunityToolkit.Mvvm · Serilog" />
+                <TextBlock Text="License" Style="{StaticResource Caption}" Margin="0,18,0,6" />
+                <TextBlock Style="{StaticResource Muted}" FontSize="12.5" Text="MIT License. Provided as-is, without warranty." />
+                <Button Style="{StaticResource AccentButton}" HorizontalAlignment="Left" Margin="0,18,0,0" Content="View source code" Command="{Binding OpenRepositoryCommand}"
+                        Visibility="{Binding HasRepository, Converter={StaticResource BoolVis}}" />
+            </StackPanel>
+        </Border>
+
+        <!-- ============================== HIDHIDE ============================== -->
+        <Border Style="{StaticResource Panel}" Width="560" Visibility="{Binding IsHidHideOpen, Converter={StaticResource BoolVis}}">
+            <Grid MaxHeight="620" Margin="24,18,20,20" DataContext="{Binding HidHide}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <DockPanel>
+                    <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="&#xE711;" FontSize="12"
+                            Command="{Binding DataContext.CloseOverlaysCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                    <TextBlock Text="Hide physical controllers" Style="{StaticResource H1}" />
+                </DockPanel>
+                <StackPanel Grid.Row="1" Margin="0,8,0,12">
+                    <TextBlock Style="{StaticResource Muted}" FontSize="12.5"
+                               Text="Hidden controllers are invisible to games but still visible to reController, so games only see the remapped virtual controller. Changes need administrator approval." />
+                    <TextBlock Text="{Binding Status}" Foreground="{DynamicResource AccentBrush}" Margin="0,10,0,0" TextWrapping="Wrap" Visibility="{Binding Status, Converter={StaticResource NullVis}}" />
+                    <Border Background="{StaticResource DangerSoftBrush}" CornerRadius="6" Padding="10,7" Margin="0,10,0,0" Visibility="{Binding Error, Converter={StaticResource NullVis}}">
+                        <TextBlock Text="{Binding Error}" Foreground="{StaticResource DangerBrush}" TextWrapping="Wrap" />
+                    </Border>
+                    <Border Background="{StaticResource WarningSoftBrush}" CornerRadius="6" Padding="10,7" Margin="0,10,0,0" Visibility="{Binding IsInstalled, Converter={StaticResource NotBoolVis}}">
+                        <TextBlock Foreground="{StaticResource WarningBrush}" TextWrapping="Wrap" Text="HidHide is not installed. Install it from Settings › Drivers, then reopen this panel." />
+                    </Border>
+                </StackPanel>
+                <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+                    <ItemsControl ItemsSource="{Binding Devices}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:HidHideDeviceViewModel}">
+                                <Border Background="{StaticResource Bg2Brush}" CornerRadius="8" Padding="12,8" Margin="0,0,0,6">
+                                    <CheckBox IsChecked="{Binding IsHidden}">
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding Device.Name}" FontWeight="SemiBold" />
+                                            <TextBlock Text="{Binding Device.InstancePath}" FontFamily="{StaticResource MonoFont}" FontSize="11" Foreground="{StaticResource TextDimBrush}" TextTrimming="CharacterEllipsis" MaxWidth="440" />
+                                        </StackPanel>
+                                    </CheckBox>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+                <DockPanel Grid.Row="3" Margin="0,12,0,0">
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                        <Button Content="Refresh" Margin="0,0,8,0" Command="{Binding LoadCommand}" />
+                        <Button Content="Apply" Style="{StaticResource AccentButton}" MinWidth="90" Command="{Binding ApplyCommand}" IsEnabled="{Binding IsLoaded}" />
+                    </StackPanel>
+                    <CheckBox Style="{StaticResource Switch}" Content="Hiding active" IsChecked="{Binding CloakEnabled}" HorizontalAlignment="Left" IsEnabled="{Binding IsLoaded}" />
+                </DockPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>
