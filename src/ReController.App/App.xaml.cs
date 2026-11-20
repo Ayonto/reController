@@ -28,7 +28,40 @@ public partial class App : Application
         base.OnStartup(e);
         var args = e.Args;
 
-        ConfigureLogging(elevatedHelper: args.Length > 0 && args[0] == ElevatedBatch.Verb);
+        ConfigureLogging(elevatedHelper: args.Length > 0 && (args[0] == ElevatedBatch.Verb || args[0] == DriverSetup.Verb));
+
+        // Elevated helper mode: install the bundled drivers silently and exit (no UI).
+        if (args.Length >= 3 && args[0] == DriverSetup.Verb)
+        {
+            int code = DriverSetup.ExecuteElevated(args[1], args.Skip(2));
+            Log.CloseAndFlush();
+            Shutdown(code);
+            return;
+        }
+
+        // Unattended / scripted setup: reController --install-drivers [vigembus] [hidhide]
+        if (args.Length > 0 && args[0] == "--install-drivers")
+        {
+            bool all = args.Length == 1;
+            bool vigem = all || args.Contains("vigembus", StringComparer.OrdinalIgnoreCase);
+            bool hidhide = all || args.Contains("hidhide", StringComparer.OrdinalIgnoreCase);
+            int exit;
+            try
+            {
+                var result = DriverSetup.InstallAsync(vigem, hidhide).GetAwaiter().GetResult();
+                foreach (var step in result.Steps) Console.Out.WriteLine($"[{(step.Ok ? "OK" : "FAIL")}] {step.Message} (exit {step.ExitCode})");
+                if (result.RebootRequired) Console.Out.WriteLine("Restart Windows to finish.");
+                exit = result.Ok ? (result.RebootRequired ? 3010 : 0) : 1;
+            }
+            catch (OperationCanceledException)
+            {
+                Console.Out.WriteLine("Administrator permission was declined.");
+                exit = 1602;
+            }
+            Log.CloseAndFlush();
+            Shutdown(exit);
+            return;
+        }
 
         // Elevated helper mode: run the requested HidHide commands and exit (no UI).
         if (args.Length == 3 && args[0] == ElevatedBatch.Verb)
@@ -122,6 +155,7 @@ public partial class App : Application
         {
             ShowMainWindow();
         }
+        if (_window.IsVisible) vm.ShowSetupIfNeeded();
         settings.Current.FirstRunCompleted = true;
         settings.Save();
     }
@@ -201,7 +235,7 @@ public partial class App : Application
     }
 
     /// <summary>
-    /// Developer/docs aid: <c>--screenshot out.png [--config name] [--page 0-3] [--select A] [--overlay settings|about]</c>
+    /// Developer/docs aid: <c>--screenshot out.png [--config name] [--page 0-3] [--select A] [--overlay settings|about|setup]</c>
     /// renders the main window to a PNG and exits. Used for README images and visual regression checks.
     /// </summary>
     private void RunScreenshot(MainViewModel vm, string path, string[] args)
@@ -214,6 +248,7 @@ public partial class App : Application
         {
             case "settings": vm.OpenSettingsCommand.Execute(null); break;
             case "about": vm.OpenAboutCommand.Execute(null); break;
+            case "setup": vm.OpenSetupCommand.Execute(null); break;
         }
 
         var w = _window!;

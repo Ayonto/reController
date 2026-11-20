@@ -83,6 +83,7 @@ public sealed partial class MainViewModel : ObservableObject, IBindingHost
         _dialogs = dialogs;
 
         Settings = new SettingsViewModel(settings, remap);
+        Setup = new DriverSetupViewModel(OnDriversInstalled);
         _controls = ControlInfo.All.ToDictionary(c => c, c => new ControlBindingViewModel(c));
         Slots = new ObservableCollection<SlotItemViewModel>(Enumerable.Range(0, DeviceAssignment.SlotCount).Select(i => new SlotItemViewModel(i)));
         Layers = new ObservableCollection<LayerItemViewModel>(Enumerable.Range(0, MappingConfig.MaxShiftLayers + 1).Select(i => new LayerItemViewModel(i)));
@@ -127,6 +128,7 @@ public sealed partial class MainViewModel : ObservableObject, IBindingHost
 
     public SettingsViewModel Settings { get; }
     public HidHideViewModel HidHide { get; } = new();
+    public DriverSetupViewModel Setup { get; }
     public ObservableCollection<GameItemViewModel> Games { get; }
     public ObservableCollection<DeviceItemViewModel> Devices { get; } = [];
     public ObservableCollection<SlotItemViewModel> Slots { get; }
@@ -161,6 +163,7 @@ public sealed partial class MainViewModel : ObservableObject, IBindingHost
     [ObservableProperty] private bool _isSettingsOpen;
     [ObservableProperty] private bool _isAboutOpen;
     [ObservableProperty] private bool _isHidHideOpen;
+    [ObservableProperty] private bool _isSetupOpen;
     [ObservableProperty] private string? _toastText;
     [ObservableProperty] private bool _toastIsError;
     [ObservableProperty] private bool _hasPendingSave;
@@ -177,7 +180,7 @@ public sealed partial class MainViewModel : ObservableObject, IBindingHost
     public bool HasDevice => SelectedDevice is not null;
     public bool HasMultipleDevices => Devices.Count > 1;
     public string PageTitle => PageTitles[Math.Clamp(PageIndex, 0, PageTitles.Count - 1)];
-    public bool IsOverlayOpen => IsSettingsOpen || IsAboutOpen || IsHidHideOpen;
+    public bool IsOverlayOpen => IsSettingsOpen || IsAboutOpen || IsHidHideOpen || IsSetupOpen;
     public string AppVersion => AppInfo.Version;
     public bool HasRepository => AppInfo.RepositoryUrl.Length > 0;
 
@@ -285,6 +288,7 @@ public sealed partial class MainViewModel : ObservableObject, IBindingHost
 
     partial void OnIsAboutOpenChanged(bool value) => OnPropertyChanged(nameof(IsOverlayOpen));
     partial void OnIsHidHideOpenChanged(bool value) => OnPropertyChanged(nameof(IsOverlayOpen));
+    partial void OnIsSetupOpenChanged(bool value) => OnPropertyChanged(nameof(IsOverlayOpen));
 
     // ------------------------------------------------------------------ IBindingHost
 
@@ -864,8 +868,31 @@ public sealed partial class MainViewModel : ObservableObject, IBindingHost
     // ------------------------------------------------------------------ chrome, overlays, toasts
 
     [RelayCommand] private void ToggleSidebar() => IsSidebarCollapsed = !IsSidebarCollapsed;
-    [RelayCommand] private void OpenSettings() { IsAboutOpen = IsHidHideOpen = false; IsSettingsOpen = true; }
-    [RelayCommand] private void OpenAbout() { IsSettingsOpen = IsHidHideOpen = false; IsAboutOpen = true; }
+    [RelayCommand] private void OpenSettings() { IsAboutOpen = IsHidHideOpen = IsSetupOpen = false; IsSettingsOpen = true; }
+    [RelayCommand] private void OpenAbout() { IsSettingsOpen = IsHidHideOpen = IsSetupOpen = false; IsAboutOpen = true; }
+
+    [RelayCommand]
+    private void OpenSetup()
+    {
+        IsSettingsOpen = IsAboutOpen = IsHidHideOpen = false;
+        if (!Setup.IsBusy) Setup.Refresh();
+        IsSetupOpen = true;
+    }
+
+    /// <summary>Opens the one-time driver setup on startup when something needed is missing.</summary>
+    public void ShowSetupIfNeeded()
+    {
+        if (!Setup.ViGEm.IsReady && Setup.ViGEm.Bundled) OpenSetup();
+        else if (!Setup.HidHide.IsReady && Setup.HidHide.Bundled && !_settings.Current.HidHideSetupDeclined) OpenSetup();
+    }
+
+    private void OnDriversInstalled()
+    {
+        _remap.RetryVirtualBus();
+        Settings.RefreshDrivers();
+        OnPropertyChanged(nameof(HidHide));
+        RefreshDriverBanners();
+    }
 
     [RelayCommand]
     private void OpenHidHide()
@@ -878,15 +905,32 @@ public sealed partial class MainViewModel : ObservableObject, IBindingHost
     [RelayCommand]
     private void CloseOverlays()
     {
-        IsSettingsOpen = IsAboutOpen = IsHidHideOpen = false;
+        if (IsSetupOpen && Setup.IsBusy) return; // keep visible until the installer finishes
+        if (IsSetupOpen && Setup.ViGEm.IsReady && !Setup.HidHide.IsReady)
+        {
+            _settings.Current.HidHideSetupDeclined = true;
+            _settings.Save();
+        }
+        IsSettingsOpen = IsAboutOpen = IsHidHideOpen = IsSetupOpen = false;
         RefreshDriverBanners();
     }
 
     [RelayCommand] private void SetPage(string index) => PageIndex = int.Parse(index, System.Globalization.CultureInfo.InvariantCulture);
     [RelayCommand] private void DismissHidHideBanner() { _hidHideBannerDismissedOnce = true; ShowHidHideBanner = false; }
     [RelayCommand] private static void OpenRepository() { if (AppInfo.RepositoryUrl.Length > 0) SettingsViewModel.Open(AppInfo.RepositoryUrl); }
-    [RelayCommand] private static void InstallViGEm() => SettingsViewModel.Open(DriverInfo.ViGEmBusDownloadUrl);
-    [RelayCommand] private static void InstallHidHide() => SettingsViewModel.Open(DriverInfo.HidHideDownloadUrl);
+    [RelayCommand]
+    private void InstallViGEm()
+    {
+        if (Setup.ViGEm.Bundled) OpenSetup();
+        else SettingsViewModel.Open(DriverInfo.ViGEmBusDownloadUrl);
+    }
+
+    [RelayCommand]
+    private void InstallHidHide()
+    {
+        if (Setup.HidHide.Bundled) OpenSetup();
+        else SettingsViewModel.Open(DriverInfo.HidHideDownloadUrl);
+    }
     [RelayCommand] private void DismissToast() { _toastTimer.Stop(); ToastText = null; }
 
     public void ShowToast(string text, bool isError = false)
@@ -900,9 +944,14 @@ public sealed partial class MainViewModel : ObservableObject, IBindingHost
     private void RefreshDriverBanners()
     {
         bool usesVirtual = Config?.Output != VirtualOutput.None;
-        ShowViGEmBanner = usesVirtual && (!DriverInfo.ViGEmBus().Installed || _remap.VirtualBusStatus is VirtualBusStatus.NotInstalled or VirtualBusStatus.VersionMismatch);
-        ViGEmBannerText = _remap.VirtualBusDetail ?? "The ViGEmBus driver is missing, so no virtual controller can be created. Install it, then restart reController.";
-        ShowHidHideBanner = usesVirtual && RemapEnabled && !DriverInfo.HidHide().Installed && !_hidHideBannerDismissedOnce;
+        bool vigemOk = Setup.ViGEm.IsReady && _remap.VirtualBusStatus is not (VirtualBusStatus.NotInstalled or VirtualBusStatus.VersionMismatch);
+        ShowViGEmBanner = usesVirtual && !vigemOk;
+        ViGEmBannerText = Setup.RebootRequired
+            ? "Restart Windows to finish the driver setup."
+            : Setup.ViGEm.Health == DriverHealth.Broken
+                ? "The controller driver (ViGEmBus) needs a quick repair before games can see the remapped controller."
+                : "One-time setup: install the bundled controller driver so games can see the remapped controller.";
+        ShowHidHideBanner = usesVirtual && RemapEnabled && vigemOk && !Setup.HidHide.IsReady && !_hidHideBannerDismissedOnce;
     }
 
     private bool _hidHideBannerDismissedOnce;

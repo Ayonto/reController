@@ -81,3 +81,35 @@ public class XInputConversionTests
         Assert.Equal(1f, s.LeftY);
     }
 }
+
+public class DriverSetupTests
+{
+    [Theory]
+    [InlineData(0, true, false)]
+    [InlineData(3010, true, true)]
+    [InlineData(1641, true, true)]
+    [InlineData(1638, true, false)]
+    [InlineData(1602, false, false)]
+    [InlineData(1603, false, false)]
+    public void Interprets_installer_exit_codes(int code, bool ok, bool reboot)
+    {
+        var step = DriverSetup.Interpret(DriverSetup.ViGEmBus, code);
+        Assert.Equal(ok, step.Ok);
+        Assert.Equal(reboot, step.RebootRequired);
+    }
+
+    [Fact]
+    public void Pinned_hashes_match_the_fetch_script()
+    {
+        string script = File.ReadAllText(Path.Combine(FindRoot(), "build", "fetch-redist.ps1"));
+        Assert.Contains(DriverSetup.ViGEmBus.Sha256, script, StringComparison.Ordinal);
+        Assert.Contains(DriverSetup.HidHide.Sha256, script, StringComparison.Ordinal);
+    }
+
+    private static string FindRoot()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "ReController.sln"))) dir = dir.Parent;
+        return dir?.FullName ?? throw new DirectoryNotFoundException("repository root");
+    }
+}

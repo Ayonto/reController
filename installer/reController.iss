@@ -39,6 +39,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 [Files]
 Source: "..\artifacts\publish\win-x64\{#AppExe}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\LICENSE"; DestDir: "{app}"; DestName: "LICENSE.txt"; Flags: ignoreversion
+Source: "..\THIRD-PARTY-NOTICES.md"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{autoprograms}\{#AppName}"; Filename: "{app}\{#AppExe}"
@@ -54,24 +55,4 @@ Filename: "{app}\{#AppExe}"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags
 [UninstallRun]
 Filename: "{sys}\taskkill.exe"; Parameters: "/IM {#AppExe} /F"; Flags: runhidden; RunOnceId: "StopReController"
 
-[Code]
-procedure CurStepChanged(CurStep: TSetupStep);
-var
-  ErrorCode: Integer;
-begin
-  if (CurStep = ssPostInstall) and (not WizardSilent) then
-  begin
-    if not RegKeyExists(HKLM, 'SYSTEM\CurrentControlSet\Services\ViGEmBus') then
-    begin
-      if MsgBox('reController needs the free ViGEmBus driver to create a virtual controller.' + #13#10#13#10 +
-                'Open the ViGEmBus download page now?', mbConfirmation, MB_YESNO) = IDYES then
-        ShellExec('open', 'https://github.com/nefarius/ViGEmBus/releases/latest', '', '', SW_SHOWNORMAL, ewNoWait, ErrorCode);
-    end;
-    if not RegKeyExists(HKLM, 'SYSTEM\CurrentControlSet\Services\HidHide') then
-    begin
-      if MsgBox('Recommended: HidHide hides your physical controller from games so they do not receive input twice.' + #13#10#13#10 +
-                'Open the HidHide download page now?', mbConfirmation, MB_YESNO) = IDYES then
-        ShellExec('open', 'https://github.com/nefarius/HidHide/releases/latest', '', '', SW_SHOWNORMAL, ewNoWait, ErrorCode);
-    end;
-  end;
-end;
+; Drivers (ViGEmBus, HidHide) are embedded in reController.exe and installed by the app's one-time setup on first launch.

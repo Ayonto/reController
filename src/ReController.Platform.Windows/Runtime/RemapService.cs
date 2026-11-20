@@ -128,6 +128,14 @@ public sealed class RemapService : IDisposable
         });
     }
 
+    /// <summary>Call after drivers were (re)installed: retries the ViGEmBus connection right away.</summary>
+    public void RetryVirtualBus() => Post(() =>
+    {
+        _lastProblem = null;
+        if (_enabled) _vigem.EnsureClient();
+        foreach (var s in _sessions.Values) s.RetryVirtualAt = 0;
+    });
+
     public bool TryGetLive(string deviceKey, out LiveState state)
     {
         if (_live.TryGetValue(deviceKey, out var box))

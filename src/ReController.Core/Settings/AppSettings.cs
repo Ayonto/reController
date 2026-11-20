@@ -59,6 +59,9 @@ public sealed class AppSettings
     public List<DeviceAssignment> Devices { get; set; } = [];
     public bool FirstRunCompleted { get; set; }
 
+    /// <summary>The user chose "Not now" for the optional HidHide driver; don't prompt again automatically.</summary>
+    public bool HidHideSetupDeclined { get; set; }
+
     public static readonly int[] SupportedPollingRates = [250, 500, 1000];
 
     public DeviceAssignment GetOrCreateDevice(string key)

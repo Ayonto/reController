@@ -27,6 +27,22 @@
     <Resource Include="Assets\logo.png" />
   </ItemGroup>
 
+  <!--
+    Bundled drivers: the official signed ViGEmBus / HidHide installers are embedded in reController.exe so users
+    never have to download anything. They are fetched (SHA-256 pinned, signature checked) into /redist on first build.
+    Build with -p:SkipRedist=true to produce a smaller dev build without them (the app then links to the downloads).
+  -->
+  <PropertyGroup>
+    <RedistDir>$(MSBuildThisFileDirectory)..\..\redist\</RedistDir>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(SkipRedist)' != 'true'">
+    <EmbeddedResource Include="$(RedistDir)ViGEmBus.exe" LogicalName="redist/ViGEmBus.exe" Visible="false" />
+    <EmbeddedResource Include="$(RedistDir)HidHide.exe" LogicalName="redist/HidHide.exe" Visible="false" />
+  </ItemGroup>
+  <Target Name="FetchRedist" BeforeTargets="PrepareForBuild" Condition="'$(SkipRedist)' != 'true' And (!Exists('$(RedistDir)ViGEmBus.exe') Or !Exists('$(RedistDir)HidHide.exe'))">
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildThisFileDirectory)..\..\build\fetch-redist.ps1&quot; -Destination &quot;$(RedistDir.TrimEnd('\'))&quot;" />
+  </Target>
+
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />

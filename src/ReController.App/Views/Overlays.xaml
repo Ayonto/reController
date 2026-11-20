@@ -105,7 +105,7 @@
                         <TextBlock Text="Drivers" Style="{StaticResource Section}" />
                         <Border Background="{StaticResource Bg2Brush}" CornerRadius="8" Padding="14,10" Margin="0,0,0,8">
                             <DockPanel>
-                                <Button DockPanel.Dock="Right" Content="Download" Command="{Binding OpenViGEmDownloadCommand}" VerticalAlignment="Center" />
+                                <Button DockPanel.Dock="Right" Content="Install / repair" VerticalAlignment="Center" Command="{Binding DataContext.OpenSetupCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
                                 <StackPanel>
                                     <StackPanel Orientation="Horizontal">
                                         <Ellipse Width="8" Height="8" VerticalAlignment="Center" Margin="0,0,8,0">
@@ -132,7 +132,7 @@
                                 <DockPanel>
                                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
                                         <Button Content="Manage…" Margin="0,0,6,0" Command="{Binding DataContext.OpenHidHideCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" Visibility="{Binding HidHideInstalled, Converter={StaticResource BoolVis}}" />
-                                        <Button Content="Download" Command="{Binding OpenHidHideDownloadCommand}" />
+                                        <Button Content="Install / repair" Command="{Binding DataContext.OpenSetupCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
                                     </StackPanel>
                                     <StackPanel>
                                         <StackPanel Orientation="Horizontal">
@@ -193,6 +193,88 @@
             </StackPanel>
         </Border>
 
+        <!-- ============================== DRIVER SETUP ============================== -->
+        <Border Style="{StaticResource Panel}" Width="560" Visibility="{Binding IsSetupOpen, Converter={StaticResource BoolVis}}">
+            <StackPanel Margin="28,22,28,24" DataContext="{Binding Setup}">
+                <DockPanel>
+                    <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="&#xE711;" FontSize="12" VerticalAlignment="Top" ToolTip="Not now"
+                            Command="{Binding DataContext.CloseOverlaysCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                    <Border Background="{DynamicResource AccentSoftBrush}" CornerRadius="10" Width="44" Height="44" HorizontalAlignment="Left">
+                        <TextBlock Text="&#xE7FC;" Style="{StaticResource Icon}" FontSize="22" Foreground="{DynamicResource AccentBrush}" />
+                    </Border>
+                </DockPanel>
+                <TextBlock Text="One-time setup" Style="{StaticResource H1}" FontSize="22" Margin="0,14,0,4" />
+                <TextBlock Style="{StaticResource Muted}" Text="reController uses two free, signed drivers to talk to games. They are already included — click Install and approve the Windows prompt. That's it." />
+
+                <ItemsControl ItemsSource="{Binding Rows}" Margin="0,16,0,0">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type vm:DriverRowViewModel}">
+                            <Border Background="{StaticResource Bg2Brush}" CornerRadius="8" Padding="14,10" Margin="0,0,0,8">
+                                <DockPanel>
+                                    <Border DockPanel.Dock="Right" CornerRadius="10" Padding="9,3" VerticalAlignment="Center">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Background" Value="{StaticResource WarningSoftBrush}" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsReady}" Value="True">
+                                                        <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <TextBlock Text="{Binding StatusText}" FontSize="11.5" FontWeight="SemiBold">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Foreground" Value="{StaticResource WarningBrush}" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsReady}" Value="True">
+                                                            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </Border>
+                                    <CheckBox IsChecked="{Binding Selected}" IsEnabled="{Binding Bundled}" VerticalAlignment="Center" Margin="0,0,12,0" ToolTip="Install or repair this driver" />
+                                    <StackPanel>
+                                        <TextBlock FontWeight="SemiBold">
+                                            <Run Text="{Binding Name, Mode=OneWay}" /> <Run Text="{Binding Package.Version, Mode=OneWay}" Foreground="{StaticResource TextDimBrush}" FontWeight="Normal" />
+                                        </TextBlock>
+                                        <TextBlock Text="{Binding Purpose}" Style="{StaticResource Muted}" FontSize="12" />
+                                        <TextBlock Text="{Binding Result}" FontSize="12" Foreground="{DynamicResource AccentBrush}" TextWrapping="Wrap" Margin="0,2,0,0"
+                                                   Visibility="{Binding Result, Converter={StaticResource NullVis}}" />
+                                    </StackPanel>
+                                </DockPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <TextBlock Text="{Binding Status}" Foreground="{DynamicResource AccentBrush}" TextWrapping="Wrap" Margin="0,6,0,0" Visibility="{Binding Status, Converter={StaticResource NullVis}}" />
+                <Border Background="{StaticResource DangerSoftBrush}" CornerRadius="6" Padding="10,7" Margin="0,8,0,0" Visibility="{Binding Error, Converter={StaticResource NullVis}}">
+                    <TextBlock Text="{Binding Error}" Foreground="{StaticResource DangerBrush}" TextWrapping="Wrap" />
+                </Border>
+                <TextBlock Style="{StaticResource Muted}" FontSize="12" Margin="0,8,0,0" Visibility="{Binding IsBundled, Converter={StaticResource NotBoolVis}}"
+                           Text="This build doesn't include the drivers. Download them from the Nefarius GitHub pages (Settings › Drivers)." />
+
+                <DockPanel Margin="0,18,0,0">
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                        <Button Content="Restart now" Margin="0,0,8,0" Command="{Binding RestartWindowsCommand}" Visibility="{Binding RebootRequired, Converter={StaticResource BoolVis}}" />
+                        <Button Style="{StaticResource AccentButton}" MinWidth="120" Command="{Binding InstallCommand}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xEA18;" Style="{StaticResource Icon}" Margin="0,0,8,0" ToolTip="Requires administrator approval" />
+                                <TextBlock Text="Install" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                    <Button Style="{StaticResource GhostButton}" HorizontalAlignment="Left" Content="Not now"
+                            Command="{Binding DataContext.CloseOverlaysCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                </DockPanel>
+                <TextBlock Style="{StaticResource Muted}" FontSize="11" Margin="0,14,0,0"
+                           Text="ViGEmBus and HidHide are open-source drivers by Nefarius Software Solutions, installed silently from their official signed installers." />
+            </StackPanel>
+        </Border>
+
         <!-- ============================== HIDHIDE ============================== -->
         <Border Style="{StaticResource Panel}" Width="560" Visibility="{Binding IsHidHideOpen, Converter={StaticResource BoolVis}}">
             <Grid MaxHeight="620" Margin="24,18,20,20" DataContext="{Binding HidHide}">
@@ -215,7 +297,7 @@
                         <TextBlock Text="{Binding Error}" Foreground="{StaticResource DangerBrush}" TextWrapping="Wrap" />
                     </Border>
                     <Border Background="{StaticResource WarningSoftBrush}" CornerRadius="6" Padding="10,7" Margin="0,10,0,0" Visibility="{Binding IsInstalled, Converter={StaticResource NotBoolVis}}">
-                        <TextBlock Foreground="{StaticResource WarningBrush}" TextWrapping="Wrap" Text="HidHide is not installed. Install it from Settings › Drivers, then reopen this panel." />
+                        <TextBlock Foreground="{StaticResource WarningBrush}" TextWrapping="Wrap" Text="HidHide is not installed yet. Use Settings › Drivers › Install, restart Windows, then reopen this panel." />
                     </Border>
                 </StackPanel>
                 <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">

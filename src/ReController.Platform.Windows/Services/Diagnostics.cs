@@ -62,6 +62,9 @@ public static class Diagnostics
         }
 
         // Drivers
+        bool bundled = DriverSetup.IsBundled(DriverSetup.ViGEmBus) && DriverSetup.IsBundled(DriverSetup.HidHide);
+        results.Add(new("Bundled driver installers", bundled,
+            bundled ? $"ViGEmBus {DriverSetup.ViGEmBus.Version}, HidHide {DriverSetup.HidHide.Version}" : "not included in this build", Critical: false));
         var vigemState = DriverInfo.ViGEmBus();
         results.Add(new("ViGEmBus driver", vigemState.Installed, vigemState.Installed ? $"installed {vigemState.Version}" : "not installed"));
         var hidhide = DriverInfo.HidHide();
@@ -99,7 +102,7 @@ public static class Diagnostics
                                                   && (s.Gamepad.Buttons & XInputNative.RightShoulder) == 0
                                                   && s.Gamepad.RightTrigger > 250
                                                   && s.Gamepad.ThumbLX > 12000, out var seen);
-            results.Add(new("Remap round trip (RB → A)", ok,
+            results.Add(new("Remap round trip (RB -> A)", ok,
                 $"read back buttons=0x{seen.Gamepad.Buttons:X4} RT={seen.Gamepad.RightTrigger} LX={seen.Gamepad.ThumbLX}"));
 
             engine.Process(default, 0.01, frame);

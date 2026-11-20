@@ -20,41 +20,9 @@ jobs:
         with:
           global-json-file: global.json
 
-      - name: Version from tag
-        id: ver
+      - name: Build, test and package
         shell: pwsh
-        run: |
-          $v = "${{ github.ref_name }}".TrimStart('v')
-          "version=$v" >> $env:GITHUB_OUTPUT
-
-      - name: Test
-        run: dotnet test ReController.sln -c Release
-
-      - name: Publish
-        run: dotnet publish src/ReController.App -p:PublishProfile=win-x64 -p:Version=${{ steps.ver.outputs.version }}
-
-      - name: Package zips
-        shell: pwsh
-        run: |
-          $v = "${{ steps.ver.outputs.version }}"
-          New-Item -ItemType Directory -Force dist | Out-Null
-          Copy-Item LICENSE, README.md artifacts/publish/win-x64/
-          Compress-Archive -Path artifacts/publish/win-x64/reController.exe, artifacts/publish/win-x64/LICENSE, artifacts/publish/win-x64/README.md -DestinationPath "dist/reController-$v-win-x64.zip"
-          New-Item -ItemType File artifacts/publish/win-x64/portable.txt -Force | Out-Null
-          Compress-Archive -Path artifacts/publish/win-x64/reController.exe, artifacts/publish/win-x64/portable.txt, artifacts/publish/win-x64/LICENSE -DestinationPath "dist/reController-$v-win-x64-portable.zip"
-          Remove-Item artifacts/publish/win-x64/portable.txt
-
-      - name: Build installer
-        shell: pwsh
-        run: |
-          choco install innosetup --no-progress -y
-          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "/DAppVersion=${{ steps.ver.outputs.version }}" "/ODist" installer/reController.iss
-          Move-Item installer/Dist/*.exe dist/
-
-      - name: Checksums
-        shell: pwsh
-        run: |
-          Get-ChildItem dist | ForEach-Object { "{0}  {1}" -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower(), $_.Name } | Set-Content dist/SHA256SUMS.txt
+        run: ./build/package.ps1 -Version ("${{ github.ref_name }}".TrimStart('v'))
 
       - name: Create GitHub release (draft)
         uses: softprops/action-gh-release@v2

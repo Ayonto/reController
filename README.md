@@ -43,19 +43,29 @@ A single dead button can make an otherwise perfect controller useless. Commercia
 | **Live input** | **Game & config** |
 | ![Live input](docs/images/live-input.png) | ![Game](docs/images/game.png) |
 
-## Requirements
+## Install (portable — nothing else to download)
 
-* Windows 10 (1809+) or Windows 11, x64
-* **[ViGEmBus](https://github.com/nefarius/ViGEmBus/releases/latest)** — required for *controller* output (creates the virtual Xbox 360 pad games see). Not needed for keyboard/mouse-only configs.
-* **[HidHide](https://github.com/nefarius/HidHide/releases/latest)** — strongly recommended. Hides your physical controller from games so they don't receive input twice. reController can configure it for you (*Settings › Drivers › Manage…*).
+1. Download **`reController-x.y.z-portable.zip`** from the [Releases](../../releases) page and unzip it anywhere (Desktop, USB stick…).
+2. Double-click **`reController.exe`**.
+3. The first time, a **One-time setup** window appears. Click **Install** and approve the Windows prompt.
+4. Restart Windows if it asks you to. Done.
 
-> Both drivers are made by Nefarius Software Solutions. ViGEmBus is no longer actively developed by its author but remains the standard, signed virtual-gamepad driver used by DS4Windows, Steam Input alternatives and others.
+That's all. Windows 10 (1809+) or 11, 64-bit. No .NET or other runtime needed.
 
-## Install
+<details>
+<summary>What does the one-time setup install?</summary>
 
-1. Install ViGEmBus (and HidHide), then reboot if asked.
-2. Download the latest release: `reController-Setup-x.y.z.exe` (installer) or `reController-x.y.z-win-x64.zip` (portable, just unzip and run).
-3. Start reController. It runs from the tray; nothing needs administrator rights except changing HidHide settings.
+reController needs two small, free, digitally signed drivers by Nefarius Software Solutions. Their official installers are **built into `reController.exe`** and run silently, so you never have to find or download them:
+
+| Driver | Why |
+|---|---|
+| **ViGEmBus 1.22** | Creates the virtual Xbox 360 controller that games see. Required for controller output (keyboard/mouse-only configs work without it). |
+| **HidHide 1.5** | Hides your physical controller from games so they don't receive every button twice. Recommended. After it's installed, use *Settings › Drivers › Manage…* to pick which controller to hide. |
+
+A broken or outdated ViGEmBus installation is detected and repaired the same way. You can re-run the setup at any time from *Settings › Drivers › Install / repair*, or unattended with `reController.exe --install-drivers`.
+</details>
+
+Prefer settings in `%AppData%` instead of next to the exe? Use `reController-x.y.z-win-x64.exe` (same app, single file) or delete `portable.txt` from the zip.
 
 ### Fix a broken button in 60 seconds
 
@@ -92,20 +102,21 @@ The built-in *General › Broken button fix* config is an example (right bumper 
 | Option | Description |
 |---|---|
 | `--minimized` | Start in the tray (used by *Start with Windows*) |
-| `--selftest [report.txt]` | Checks XInput, SDL3, drivers and performs a real virtual-controller round trip (plug in a virtual pad, remap RB → A through the engine, read it back via XInput). Exit code 1 if a critical check fails. Attach the output to bug reports. |
+| `--install-drivers [vigembus] [hidhide]` | Install / repair the bundled drivers without the UI (one UAC prompt). Exit code 0 = done, 3010 = restart needed. |
+| `--selftest [report.txt]` | Checks XInput, SDL3, bundled and installed drivers and performs a real virtual-controller round trip (plug in a virtual pad, remap RB → A through the engine, read it back via XInput). Exit code 1 if a critical check fails. Attach the output to bug reports. |
 | `--screenshot out.png [--config name] [--page 0-3] [--select Control] [--overlay settings\|about]` | Renders the UI to a PNG (used for docs and visual checks) |
 
 ## Data & portable mode
 
 * Profiles & settings: `%AppData%\reController` · Logs: `%LocalAppData%\reController\logs`
-* **Portable mode:** create an empty `portable.txt` next to `reController.exe`; everything is then stored in a `data` folder beside it.
+* **Portable mode** (default in the portable zip): when `portable.txt` sits next to `reController.exe`, everything is stored in a `data` folder beside it.
 
 ## Troubleshooting
 
 | Symptom | Fix |
 |---|---|
 | Game reacts twice / to the original button | Install HidHide and hide the physical controller (*Settings › Drivers › Manage…*), then reconnect it. |
-| "ViGEmBus … bus device is missing" | The driver is half-installed. Reinstall the latest ViGEmBus and reboot. `reController --selftest` confirms the fix. |
+| "ViGEmBus needs a quick repair" | The driver is half-installed or outdated. Click *Set up now* (or *Settings › Drivers › Install / repair*), approve the prompt and restart Windows. `reController --selftest` confirms the fix. |
 | Keyboard/mouse output doesn't reach a game | The game probably runs as administrator; Windows blocks input from non-elevated apps. Run reController as administrator too. |
 | PlayStation / Switch controller not detected | Close Steam (Big Picture can claim the device) or disable Steam Input for it, then replug. |
 | Online game with anti-cheat | Some anti-cheat systems block virtual controllers or injected input. Use at your own discretion. |
@@ -115,12 +126,12 @@ The built-in *General › Broken button fix* config is an example (right bumper 
 ```powershell
 git clone <this repository>
 cd reController
-dotnet test                                                   # 30+ unit tests
-dotnet run --project src/ReController.App                     # debug run
-dotnet publish src/ReController.App -p:PublishProfile=win-x64  # single-file release build → artifacts/publish/win-x64
+dotnet test                                    # 40+ unit tests
+dotnet run --project src/ReController.App      # debug run
+.\build\package.ps1                            # full release -> dist/ (portable zip + exe + checksums)
 ```
 
-Requires the .NET 8 SDK (Visual Studio 2022 17.8+, Rider or VS Code). The installer is built with [Inno Setup 6](https://jrsoftware.org/isinfo.php): `iscc installer\reController.iss`.
+Requires the .NET 8 SDK (Visual Studio 2022 17.8+, Rider or VS Code). The first build downloads the official signed ViGEmBus/HidHide installers into `redist/` (SHA-256 pinned, signature verified by `build/fetch-redist.ps1`) and embeds them; build with `-p:SkipRedist=true` to skip that. An optional classic installer can be built with [Inno Setup 6](https://jrsoftware.org/isinfo.php): `iscc installer\reController.iss`.
 
 ### Project layout
 
@@ -139,4 +150,4 @@ Issues and pull requests are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 reController is released under the [MIT License](LICENSE).
 
-Built on [ViGEmBus](https://github.com/nefarius/ViGEmBus) and [HidHide](https://github.com/nefarius/HidHide) by Nefarius Software Solutions, [SDL3](https://libsdl.org) (zlib), [CommunityToolkit.Mvvm](https://github.com/CommunityToolkit/dotnet) and [Serilog](https://serilog.net). reController is not affiliated with Microsoft, Sony, Nintendo or any commercial remapping product. Xbox, PlayStation, DualShock, DualSense and Nintendo Switch are trademarks of their respective owners.
+Third-party licenses are listed in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md). Built on [ViGEmBus](https://github.com/nefarius/ViGEmBus) and [HidHide](https://github.com/nefarius/HidHide) by Nefarius Software Solutions, [SDL3](https://libsdl.org) (zlib), [CommunityToolkit.Mvvm](https://github.com/CommunityToolkit/dotnet) and [Serilog](https://serilog.net). reController is not affiliated with Microsoft, Sony, Nintendo or any commercial remapping product. Xbox, PlayStation, DualShock, DualSense and Nintendo Switch are trademarks of their respective owners.

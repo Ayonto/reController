@@ -1,3 +1,4 @@
+using System.IO;
 using System.Windows.Threading;
 using ReController.App.Infrastructure;
 using ReController.Core.Input;
@@ -60,13 +61,25 @@ public sealed class ProfileService
         var (profiles, problems) = _store.LoadAll();
         issues = problems;
         foreach (var i in problems) Log.Warning("Profile {File} could not be loaded and was quarantined: {Message}", i.File, i.Message);
-        if (profiles.Count == 0)
+        // Seed the example games exactly once per data folder. A marker (rather than "folder is empty") guarantees
+        // defaults are never re-created next to the user's own profiles, even if they deleted every game.
+        string marker = System.IO.Path.Combine(_store.Directory, ".seeded");
+        if (profiles.Count > 0 && !File.Exists(marker)) TryTouch(marker);
+        if (profiles.Count == 0 && !File.Exists(marker))
         {
+            TryTouch(marker);
             profiles.AddRange(DefaultProfiles.Create());
             foreach (var p in profiles) _store.Save(p);
             profiles.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.CurrentCultureIgnoreCase));
         }
         return profiles;
+    }
+
+    private static void TryTouch(string path)
+    {
+        try { File.WriteAllText(path, DateTimeOffset.UtcNow.ToString("O")); }
+        catch (IOException ex) { Log.Warning(ex, "Could not write {Path}", path); }
+        catch (UnauthorizedAccessException ex) { Log.Warning(ex, "Could not write {Path}", path); }
     }
 
     public void MarkDirty(GameProfile p)

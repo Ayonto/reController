@@ -10,3 +10,16 @@ TestResults/
 *.DotSettings.user
 coverage*.xml
 installer/Output/
+
+# Downloaded at build time (signed driver installers, see build/fetch-redist.ps1)
+redist/
+
+# Release packages
+dist/
+
+# Local helper scripts / AI-assistant working files (not part of the product)
+tools/
+.claude/
+CLAUDE.local.md
+scratch/
+*.tmp
